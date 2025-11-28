@@ -67,14 +67,87 @@
     button:disabled {
       background: gray;
     }
+    .admin-panel {
+      background: #fff3e0;
+      padding: 15px;
+      margin-bottom: 20px;
+      border: 1px solid #ffcc80;
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
   </style>
 </head>
 
 <body>
   <div id="app">
-    <h1>🐟 今日新鮮漁獲</h1>
+    <!-- 管理員模式切換 -->
+    <div style="text-align:right; margin-bottom:10px;">
+      <button @click="isAdmin = !isAdmin" style="background:#607d8b; font-size:12px;">
+        {{ isAdmin ? '切換回商店' : '管理員登入' }}
+      </button>
+    </div>
 
-    <!-- 商品列表 (九宮格) -->
+    <!-- ⭐ 管理介面 -->
+    <div v-if="isAdmin" class="admin-panel">
+      <h2>📋 訂單管理系統</h2>
+      <button @click="fetchOrders">🔄 重新整理訂單</button>
+      
+      <div v-if="orders.length === 0" style="margin-top:10px;">
+        <p>目前沒有訂單</p>
+      </div>
+
+      <table v-else>
+        <thead>
+          <tr>
+            <th>訂單編號</th>
+            <th>客戶資料</th>
+            <th>購買內容</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="order in orders" :key="order.orderId">
+            <td>{{ order.orderId }}</td>
+            <td>
+              {{ order.data.customer.name }}<br>
+              <small>{{ order.data.customer.phone }}</small>
+            </td>
+            <td>
+              <div v-for="item in order.data.cart">
+                {{ item.Name }} x {{ item.quantity }}
+              </div>
+            </td>
+            <td>
+              <button style="background:#d32f2f; padding:4px 8px;" @click="deleteOrder(order.orderId)">
+                刪除
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ⭐ 商店介面 -->
+    <div v-else>
+      <h1>🐟 今日新鮮漁獲</h1>
+
+    <!-- ⭐ 商店介面 -->
+    <div v-else>
+      <h1>🐟 今日新鮮漁獲</h1>
+      
+      <!-- 商品列表 (九宮格) -->
     <div class="product-grid">
       <div class="product" v-for="p in products" :key="p.id">
         <img v-if="p.ImageURL" :src="p.ImageURL" alt="商品圖片">
@@ -124,9 +197,10 @@
       <input v-model="customer.phone" style="padding:5px; width:200px;">
     </label><br><br>
 
-    <button @click="submitOrder" :disabled="isSubmitting || cart.length === 0">
-      {{ isSubmitting ? '送出中...' : '✔ 確認下單' }}
-    </button>
+      <button @click="submitOrder" :disabled="isSubmitting || cart.length === 0">
+        {{ isSubmitting ? '送出中...' : '✔ 確認下單' }}
+      </button>
+    </div>
   </div>
 
   <script>
@@ -135,8 +209,10 @@
       data() {
         return {
           apiUrl: "https://meebo-fish-hc300.dcwchris.workers.dev",
+          isAdmin: false, // 是否為管理員模式
           products: [],
           cart: [],
+          orders: [], // 訂單列表
           isSubmitting: false,
           customer: { name: "", phone: "" }
         };
@@ -207,16 +283,51 @@
             // 清空
             this.customer = { name: "", phone: "" };
             this.cart = [];
+            
+            // 如果在管理模式下，順便刷新訂單
+            if (this.isAdmin) this.fetchOrders();
           })
           .catch(err => {
             this.isSubmitting = false;
             alert("❌ 訂單送出失敗");
             console.error(err);
           });
+        },
+
+        // 🏢 管理員：讀取訂單
+        fetchOrders() {
+          fetch(this.apiUrl + "/orders")
+          .then(r => r.json())
+          .then(data => {
+            this.orders = data.orders || [];
+          })
+          .catch(err => console.error("讀取訂單失敗", err));
+        },
+
+        // 🏢 管理員：刪除訂單
+        deleteOrder(id) {
+          if (!confirm("確定要刪除這筆訂單嗎？")) return;
+
+          fetch(this.apiUrl + "/orders/delete/" + id, {
+            method: "DELETE"
+          })
+          .then(r => r.json())
+          .then(res => {
+            alert("訂單已刪除");
+            this.fetchOrders(); // 重新整理
+          })
+          .catch(err => alert("刪除失敗"));
         }
       },
 
       mounted() {
+        // 檢查網址是否有 ?admin=true
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('admin')) {
+          this.isAdmin = true;
+          this.fetchOrders();
+        }
+
         this.fetchProducts();
       }
     });
