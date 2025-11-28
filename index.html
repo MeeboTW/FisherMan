@@ -220,6 +220,15 @@
         }
       },
 
+      watch: {
+        // 當切換到管理員模式時，自動載入訂單
+        isAdmin(newVal) {
+          if (newVal) {
+            this.fetchOrders();
+          }
+        }
+      },
+
       methods: {
         // 載入商品（GET）
         fetchProducts() {
@@ -306,9 +315,11 @@
 
         // 🏢 管理員：讀取訂單
         fetchOrders() {
+          console.log("Vue: 開始載入訂單列表...");
           fetch(this.apiUrl + "/orders")
           .then(r => r.json())
           .then(data => {
+            console.log("Vue: 收到訂單資料", data);
             this.orders = data.orders || [];
           })
           .catch(err => console.error("讀取訂單失敗", err));
