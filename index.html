@@ -42,6 +42,7 @@
 
     <!-- 商品列表 -->
     <div class="product" v-for="p in products" :key="p.id">
+      <img v-if="p.ImageURL" :src="p.ImageURL" alt="商品圖片" style="max-width: 100%; height: auto; border-radius: 4px; margin-bottom: 10px;">
       <h3>{{ p.Name }}</h3>
       <p>價格：<b>${{ p.Price }}</b></p>
       <button @click="addToCart(p)">加入購物車</button>
