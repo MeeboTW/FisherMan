@@ -109,7 +109,7 @@
       methods: {
 		// ⭐ 取得商品資料（透過 Worker Proxy）
 		fetchProducts() {
-			fetch("https://bitter-mode-a901.dcwchris.workers.dev/products")
+			fetch("https://winter-pond-5ec0.dcwchris.workers.dev/products")
 			.then(r => r.json())
 			.then(data => {
 				this.products = data.products || [];
@@ -150,7 +150,7 @@
 				cart: this.cart
 			};
 
-			fetch("https://bitter-mode-a901.dcwchris.workers.dev/submit", {
+			fetch("https://winter-pond-5ec0.dcwchris.workers.dev/submit", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(payload)
