@@ -142,60 +142,56 @@
     <!-- ⭐ 商店介面 -->
     <div v-else>
       <h1>🐟 今日新鮮漁獲</h1>
-
-    <!-- ⭐ 商店介面 -->
-    <div v-else>
-      <h1>🐟 今日新鮮漁獲</h1>
       
       <!-- 商品列表 (九宮格) -->
-    <div class="product-grid">
-      <div class="product" v-for="p in products" :key="p.id">
-        <img v-if="p.ImageURL" :src="p.ImageURL" alt="商品圖片">
-        <div v-else style="width:300px; height:300px; background:#eee; display:flex; align-items:center; justify-content:center; margin-bottom:10px; border-radius:4px;">
-          <span style="color:#888;">暫無圖片</span>
+      <div class="product-grid">
+        <div class="product" v-for="p in products" :key="p.id">
+          <img v-if="p.ImageURL" :src="p.ImageURL" alt="商品圖片">
+          <div v-else style="width:300px; height:300px; background:#eee; display:flex; align-items:center; justify-content:center; margin-bottom:10px; border-radius:4px;">
+            <span style="color:#888;">暫無圖片</span>
+          </div>
+          
+          <h3>{{ p.Name }}</h3>
+          <p>價格：<b>${{ p.Price }}</b></p>
+          <button @click="addToCart(p)">加入購物車</button>
         </div>
-        
-        <h3>{{ p.Name }}</h3>
-        <p>價格：<b>${{ p.Price }}</b></p>
-        <button @click="addToCart(p)">加入購物車</button>
       </div>
-    </div>
 
-    <hr>
+      <hr>
 
-    <!-- 購物車 -->
-    <h2>🛒 購物車 ({{ cart.length }} 項)</h2>
+      <!-- 購物車 -->
+      <h2>🛒 購物車 ({{ cart.length }} 項)</h2>
 
-    <div v-if="cart.length === 0">
-      <p>購物車目前是空的</p>
-    </div>
+      <div v-if="cart.length === 0">
+        <p>購物車目前是空的</p>
+      </div>
 
-    <div class="cart-item" v-for="c in cart" :key="c.id">
-      {{ c.Name }}  
-      — ${{ c.Price }}  
-      × {{ c.quantity }}
+      <div class="cart-item" v-for="c in cart" :key="c.id">
+        {{ c.Name }}  
+        — ${{ c.Price }}  
+        × {{ c.quantity }}
 
-      <button style="background:#d32f2f; float:right;" @click="removeFromCart(c)">
-        移除
-      </button>
-    </div>
+        <button style="background:#d32f2f; float:right;" @click="removeFromCart(c)">
+          移除
+        </button>
+      </div>
 
-    <p v-if="cart.length > 0">
-      <b>總計：<span style="color:green">${{ cartTotal }}</span></b>
-    </p>
+      <p v-if="cart.length > 0">
+        <b>總計：<span style="color:green">${{ cartTotal }}</span></b>
+      </p>
 
-    <hr>
+      <hr>
 
-    <!-- 訂購資訊 -->
-    <h2>👤 訂購人資訊</h2>
+      <!-- 訂購資訊 -->
+      <h2>👤 訂購人資訊</h2>
 
-    <label>姓名：<br>
-      <input v-model="customer.name" style="padding:5px; width:200px;">
-    </label><br><br>
+      <label>姓名：<br>
+        <input v-model="customer.name" style="padding:5px; width:200px;">
+      </label><br><br>
 
-    <label>電話：<br>
-      <input v-model="customer.phone" style="padding:5px; width:200px;">
-    </label><br><br>
+      <label>電話：<br>
+        <input v-model="customer.phone" style="padding:5px; width:200px;">
+      </label><br><br>
 
       <button @click="submitOrder" :disabled="isSubmitting || cart.length === 0">
         {{ isSubmitting ? '送出中...' : '✔ 確認下單' }}
