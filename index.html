@@ -227,13 +227,27 @@
       methods: {
         // 載入商品（GET）
         fetchProducts() {
-          console.log("開始載入商品...");
+          console.log("Vue: 開始載入商品...");
+          const self = this; // 鎖定 this，避免作用域跑掉
+
           fetch(this.apiUrl + "/products")
-          .then(r => r.json())
-          .then(data => {
-            this.products = data.products || [];
+          .then(r => {
+            if (!r.ok) throw new Error("HTTP error " + r.status);
+            return r.json();
           })
-          .catch(err => console.error("商品載入錯誤：", err));
+          .then(data => {
+            console.log("Vue: 收到資料", data);
+            if (data.products && Array.isArray(data.products)) {
+              self.products = data.products;
+              console.log("Vue: 商品列表已更新，共 " + self.products.length + " 筆");
+            } else {
+              console.error("Vue: 資料格式不正確", data);
+            }
+          })
+          .catch(err => {
+            console.error("Vue: 商品載入錯誤", err);
+            alert("載入失敗，請檢查 Console");
+          });
         },
 
         // 加入購物車
