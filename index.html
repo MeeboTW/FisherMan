@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>鮮魚下單系統</title>
-  <script src="https://unpkg.com/vue@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.min.js"></script>
 
   <style>
     body {
@@ -93,7 +93,7 @@
       el: "#app",
       data() {
         return {
-          apiUrl: "https://meebo-fish-hc300.dcwchris.workers.dev/", // 請填入 Cloudflare Worker 網址 (例如 https://fishshop.xxx.workers.dev)
+          apiUrl: "https://meebo-fish-hc300.dcwchris.workers.dev",
           products: [],
           cart: [],
           isSubmitting: false,
@@ -110,6 +110,7 @@
       methods: {
         // 載入商品（GET）
         fetchProducts() {
+          console.log("開始載入商品...");
           fetch(this.apiUrl + "/products")
           .then(r => r.json())
           .then(data => {
