@@ -157,6 +157,11 @@
       <input v-model="customer.phone" style="padding:5px; width:200px;" placeholder="請輸入聯絡電話">
     </label><br><br>
 
+    <!-- 訂單備註 -->
+    <label>訂單備註 (選填)：<br>
+      <textarea v-model="customer.note" style="padding:5px; width:100%; max-width:300px; height:60px;" placeholder="例如：少冰、下午五點取貨"></textarea>
+    </label><br><br>
+
     <button @click="submitOrder" :disabled="isSubmitting || cart.length === 0">
       {{ isSubmitting ? '送出中...' : '✔ 確認下單' }}
     </button>
@@ -172,7 +177,7 @@
           products: [],
           cart: [],
           isSubmitting: false,
-          customer: { name: "", phone: "" },
+          customer: { name: "", phone: "", note: "" },
           isLoggedIn: false,
           googleUser: {}
         };
@@ -303,7 +308,7 @@
             alert("✔ 訂單提交成功！");
 
             // 清空
-            this.customer = { name: "", phone: "" };
+            this.customer = { name: "", phone: "", note: "" };
             this.cart = [];
           })
           .catch(err => {
