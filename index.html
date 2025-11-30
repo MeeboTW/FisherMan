@@ -239,24 +239,39 @@
 
       mounted() {
         this.fetchProducts();
-        // 讀取收藏紀錄
+        
+        // 1. 讀取收藏紀錄
         const savedFav = localStorage.getItem('fish_fav');
         if (savedFav) {
           try { this.favorites = JSON.parse(savedFav); } catch(e) {}
+        }
+
+        // 2. 讀取上次輸入的電話與備註 (持久化)
+        const savedCustomer = localStorage.getItem('fish_customer');
+        if (savedCustomer) {
+          try {
+            const parsed = JSON.parse(savedCustomer);
+            if (parsed.phone) this.customer.phone = parsed.phone;
+            if (parsed.note) this.customer.note = parsed.note;
+          } catch(e) {}
+        }
+
+        // 3. 讀取 Google 登入狀態 (持久化)
+        const savedUser = localStorage.getItem('fish_user');
+        if (savedUser) {
+          try {
+            this.googleUser = JSON.parse(savedUser);
+            this.isLoggedIn = true;
+            this.customer.name = this.googleUser.name;
+          } catch(e) {}
         }
         
         // 將 Vue 實例掛載到 window，讓 Google callback 呼叫得到
         window.handleCredentialResponse = (response) => {
           console.log("Google Token:", response.credential);
           
-          // 解析 JWT Token (簡單版，不需後端驗證)
+          // 解析 JWT Token
           const responsePayload = this.decodeJwt(response.credential);
-          console.log("ID: " + responsePayload.sub);
-          console.log('Full Name: ' + responsePayload.name);
-          console.log('Given Name: ' + responsePayload.given_name);
-          console.log('Family Name: ' + responsePayload.family_name);
-          console.log("Image URL: " + responsePayload.picture);
-          console.log("Email: " + responsePayload.email);
 
           // 更新 Vue 狀態
           this.isLoggedIn = true;
@@ -268,10 +283,32 @@
           
           // 自動填入姓名
           this.customer.name = responsePayload.name;
+
+          // ⭐ 儲存登入狀態到 LocalStorage
+          localStorage.setItem('fish_user', JSON.stringify(this.googleUser));
         };
       },
 
+      watch: {
+        // ⭐ 監聽電話與備註變動，自動儲存
+        'customer.phone'(newVal) {
+          this.saveCustomerData();
+        },
+        'customer.note'(newVal) {
+          this.saveCustomerData();
+        }
+      },
+
       methods: {
+        // 儲存客戶輸入資料
+        saveCustomerData() {
+          const data = {
+            phone: this.customer.phone,
+            note: this.customer.note
+          };
+          localStorage.setItem('fish_customer', JSON.stringify(data));
+        },
+
         // 收藏相關
         isFav(id) {
           return this.favorites.includes(id);
@@ -340,6 +377,10 @@
           this.isLoggedIn = false;
           this.googleUser = {};
           this.customer.name = "";
+          
+          // 清除登入紀錄
+          localStorage.removeItem('fish_user');
+          
           // phone 不清空，讓使用者自己決定
           google.accounts.id.disableAutoSelect(); // 避免自動重新登入
         },
