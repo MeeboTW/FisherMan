@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>鮮魚後台管理系統</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f7f7;
+      margin: 0;
+      padding: 20px;
+    }
+    h1, h2 {
+      margin-bottom: 10px;
+    }
+    
+    /* 1. 儀表板樣式 */
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      text-align: center;
+      border-left: 5px solid #1976d2;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: bold;
+      color: #333;
+      margin: 5px 0;
+    }
+    .stat-label {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .admin-panel {
+      background: #fff3e0;
+      padding: 15px;
+      margin-bottom: 20px;
+      border: 1px solid #ffcc80;
+      border-radius: 8px;
+    }
+
+    /* 2. 搜尋篩選區樣式 */
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .search-box {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      min-width: 200px;
+      font-size: 14px;
+    }
+    .filter-select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      background: white;
+    }
+
+    /* 狀態標籤 */
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      color: white;
+      min-width: 50px;
+      text-align: center;
+    }
+    .status-pending { background-color: #ff9800; }
+    .status-completed { background-color: #4caf50; }
+    .status-cancelled { background-color: #9e9e9e; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    button {
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      color: white;
+      font-size: 14px;
+    }
+    button:disabled {
+      background: gray;
+    }
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <h1>📋 訂單管理系統</h1>
+    <p><a href="index.html">← 返回商店前台</a></p>
+
+    <!-- ⭐ 1. 營運儀表板 -->
+    <div class="dashboard">
+      <div class="stat-card" style="border-left-color: #4caf50;">
+        <div class="stat-label">今日營業額</div>
+        <div class="stat-value" style="color: #2e7d32;">${{ stats.todayRevenue }}</div>
+      </div>
+      <div class="stat-card" style="border-left-color: #2196f3;">
+        <div class="stat-label">今日訂單數</div>
+        <div class="stat-value">{{ stats.todayCount }} 張</div>
+      </div>
+      <div class="stat-card" style="border-left-color: #ff9800;">
+        <div class="stat-label">待處理訂單</div>
+        <div class="stat-value" style="color: #ef6c00;">{{ stats.pendingCount }} 張</div>
+      </div>
+    </div>
+
+    <div class="admin-panel">
+      <!-- ⭐ 2. 搜尋與篩選工具列 -->
+      <div class="controls">
+        <button style="background: #1976d2;" @click="fetchOrders">🔄 重新整理</button>
+        
+        <select v-model="filterStatus" class="filter-select">
+          <option value="all">全部狀態</option>
+          <option value="pending">🔴 未處理 ({{ stats.pendingCount }})</option>
+          <option value="completed">🟢 已完成</option>
+          <option value="cancelled">⚪ 已取消</option>
+        </select>
+
+        <input type="text" v-model="searchQuery" class="search-box" placeholder="🔍 搜尋訂單編號、姓名、電話...">
+      </div>
+
+      <div v-if="orders.length === 0" style="margin-top:10px;">
+        <p>目前沒有訂單</p>
+      </div>
+
+      <table v-else>
+        <thead>
+          <tr>
+            <th width="80">狀態</th>
+            <th width="150">訂單編號</th>
+            <th width="150">客戶資料</th>
+            <th>購買內容</th>
+            <th width="100">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- 注意：這裡改成用 sortedOrders (已篩選過的列表) -->
+          <tr v-for="order in sortedOrders" :key="order.orderId">
+            <td>
+              <span :class="'status-badge status-' + (order.data.status || 'pending')">
+                {{ getStatusText(order.data.status) }}
+              </span>
+            </td>
+            <td>
+              {{ order.orderId }}<br>
+              <small style="color:#888">{{ formatDate(order.data.createdAt) }}</small>
+            </td>
+            <td>
+              {{ order.data.customer ? order.data.customer.name : '無姓名' }}<br>
+              <small>{{ order.data.customer ? order.data.customer.phone : '無電話' }}</small>
+            </td>
+            <td>
+              <div v-if="order.data.cart">
+                <div v-for="item in order.data.cart">
+                  {{ item.Name }} x {{ item.quantity }}
+                </div>
+                <div style="margin-top:5px; border-top:1px dashed #eee; padding-top:5px; font-weight:bold; color:green;">
+                   總計: ${{ calcTotal(order.data.cart) }}
+                </div>
+              </div>
+              <div v-else style="color:red;">(資料缺損)</div>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <button v-if="(order.data.status || 'pending') !== 'completed'" 
+                        style="background:#4caf50;" 
+                        @click="updateStatus(order.orderId, 'completed')">
+                  ✅ 完成
+                </button>
+
+                <button v-if="(order.data.status || 'pending') === 'completed'" 
+                        style="background:#ff9800;" 
+                        @click="updateStatus(order.orderId, 'pending')">
+                  ↩️ 重置
+                </button>
+
+                <button style="background:#d32f2f;" @click="deleteOrder(order.orderId)">
+                  🗑️ 刪除
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    new Vue({
+      el: "#app",
+      data() {
+        return {
+          apiUrl: "https://meebo-fish-hc300.dcwchris.workers.dev",
+          orders: [], // 原始訂單列表
+          searchQuery: "", // 搜尋關鍵字
+          filterStatus: "all" // 狀態篩選
+        };
+      },
+
+      computed: {
+        // ⭐ 即時統計數據
+        stats() {
+          // 取得今日日期字串 (例如 2023/11/30)
+          const todayStr = new Date().toLocaleDateString();
+          let todayRevenue = 0;
+          let todayCount = 0;
+          let pendingCount = 0;
+
+          this.orders.forEach(o => {
+            const data = o.data;
+            const status = data.status || 'pending';
+
+            // 計算待處理 (不管是否為今日)
+            if (status === 'pending') {
+              pendingCount++;
+            }
+
+            // 計算今日業績 (排除已取消)
+            if (status !== 'cancelled' && data.createdAt) {
+              const d = new Date(data.createdAt).toLocaleDateString();
+              if (d === todayStr) {
+                todayCount++;
+                todayRevenue += this.calcTotal(data.cart);
+              }
+            }
+          });
+
+          return { todayRevenue, todayCount, pendingCount };
+        },
+
+        // ⭐ 篩選與排序邏輯
+        sortedOrders() {
+          // 1. 先過濾
+          let list = this.orders.filter(o => {
+            const data = o.data;
+            const status = data.status || 'pending';
+
+            // 狀態篩選
+            if (this.filterStatus !== 'all' && status !== this.filterStatus) {
+              return false;
+            }
+
+            // 關鍵字搜尋 (支援 ID, 姓名, 電話)
+            if (this.searchQuery) {
+              const q = this.searchQuery.toLowerCase();
+              const id = o.orderId.toLowerCase();
+              const name = (data.customer?.name || '').toLowerCase();
+              const phone = (data.customer?.phone || '').toLowerCase();
+              
+              return id.includes(q) || name.includes(q) || phone.includes(q);
+            }
+            
+            return true;
+          });
+
+          // 2. 再排序 (未處理優先 > 時間新到舊)
+          return list.sort((a, b) => {
+            const statusA = (a.data.status || 'pending') === 'pending' ? 1 : 0;
+            const statusB = (b.data.status || 'pending') === 'pending' ? 1 : 0;
+            
+            if (statusA !== statusB) return statusB - statusA;
+            return b.orderId.localeCompare(a.orderId);
+          });
+        }
+      },
+
+      methods: {
+        getStatusText(status) {
+          const map = { 'pending': '未處理', 'completed': '已完成', 'cancelled': '已取消' };
+          return map[status] || '未處理';
+        },
+        
+        formatDate(isoStr) {
+          if (!isoStr) return '';
+          try {
+            const d = new Date(isoStr);
+            return d.toLocaleString('zh-TW', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+          } catch(e) { return ''; }
+        },
+
+        calcTotal(cart) {
+          if (!cart) return 0;
+          return cart.reduce((sum, i) => sum + (Number(i.Price) * Number(i.quantity)), 0);
+        },
+
+        updateStatus(id, newStatus) {
+          fetch(this.apiUrl + "/orders/update/" + id, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: newStatus })
+          })
+          .then(r => r.json())
+          .then(res => {
+            const order = this.orders.find(o => o.orderId === id);
+            if (order) {
+              order.data.status = newStatus;
+              this.orders = [...this.orders]; // 觸發更新
+            }
+          })
+          .catch(err => alert("狀態更新失敗"));
+        },
+
+        fetchOrders() {
+          console.log("Vue: 開始載入訂單列表...");
+          fetch(this.apiUrl + "/orders")
+          .then(r => r.json())
+          .then(data => {
+            console.log("Vue: 收到訂單資料", data);
+            this.orders = data.orders || [];
+          })
+          .catch(err => console.error("讀取訂單失敗", err));
+        },
+
+        deleteOrder(id) {
+          if (!confirm("確定要刪除這筆訂單嗎？")) return;
+
+          fetch(this.apiUrl + "/orders/delete/" + id, {
+            method: "DELETE"
+          })
+          .then(r => r.json())
+          .then(res => {
+            this.orders = this.orders.filter(o => o.orderId !== id);
+          })
+          .catch(err => alert("刪除失敗"));
+        }
+      },
+
+      mounted() {
+        this.fetchOrders();
+      }
+    });
+  </script>
+
+</body>
+</html>
