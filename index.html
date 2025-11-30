@@ -391,10 +391,14 @@
           })
           .then(res => {
             this.isSubmitting = false;
-            alert("✔ 訂單提交成功！");
+            alert("✔ 訂單提交成功！您可以到查詢頁面查看訂單狀態。");
 
-            // 清空
-            this.customer = { name: "", phone: "", note: "" };
+            // 清空 (保留姓名如果已登入)
+            this.customer = { 
+              name: this.isLoggedIn ? this.googleUser.name : "", 
+              phone: "", 
+              note: "" 
+            };
             this.cart = [];
           })
           .catch(err => {
