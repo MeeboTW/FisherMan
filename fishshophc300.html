@@ -192,6 +192,19 @@
             <td>
               {{ order.data.customer ? order.data.customer.name : '無姓名' }}<br>
               <small>{{ order.data.customer ? order.data.customer.phone : '無電話' }}</small>
+              
+              <!-- 備註編輯區 -->
+              <div style="margin-top: 8px; font-size: 13px; background: #f9f9f9; padding: 5px; border-radius: 4px;">
+                <div v-if="!order.isEditingNote">
+                  <span style="color:#666;">📝 {{ (order.data.customer && order.data.customer.note) || '無備註' }}</span>
+                  <a href="#" @click.prevent="$set(order, 'isEditingNote', true); $set(order, 'tempNote', (order.data.customer && order.data.customer.note) || '')" style="text-decoration:none; margin-left:5px;">✏️</a>
+                </div>
+                <div v-else>
+                  <input v-model="order.tempNote" style="width: 100px; padding: 2px;">
+                  <button style="background:green; padding:2px 5px; font-size:10px;" @click="saveNote(order)">💾</button>
+                  <button style="background:#ccc; padding:2px 5px; font-size:10px;" @click="$set(order, 'isEditingNote', false)">❌</button>
+                </div>
+              </div>
             </td>
             <td>
               <div v-if="order.data.cart">
@@ -244,7 +257,6 @@
       computed: {
         // ⭐ 即時統計數據
         stats() {
-          // 取得今日日期字串 (例如 2023/11/30)
           const todayStr = new Date().toLocaleDateString();
           let todayRevenue = 0;
           let todayCount = 0;
@@ -254,12 +266,8 @@
             const data = o.data;
             const status = data.status || 'pending';
 
-            // 計算待處理 (不管是否為今日)
-            if (status === 'pending') {
-              pendingCount++;
-            }
+            if (status === 'pending') pendingCount++;
 
-            // 計算今日業績 (排除已取消)
             if (status !== 'cancelled' && data.createdAt) {
               const d = new Date(data.createdAt).toLocaleDateString();
               if (d === todayStr) {
@@ -274,34 +282,25 @@
 
         // ⭐ 篩選與排序邏輯
         sortedOrders() {
-          // 1. 先過濾
           let list = this.orders.filter(o => {
             const data = o.data;
             const status = data.status || 'pending';
 
-            // 狀態篩選
-            if (this.filterStatus !== 'all' && status !== this.filterStatus) {
-              return false;
-            }
+            if (this.filterStatus !== 'all' && status !== this.filterStatus) return false;
 
-            // 關鍵字搜尋 (支援 ID, 姓名, 電話)
             if (this.searchQuery) {
               const q = this.searchQuery.toLowerCase();
               const id = o.orderId.toLowerCase();
               const name = (data.customer?.name || '').toLowerCase();
               const phone = (data.customer?.phone || '').toLowerCase();
-              
               return id.includes(q) || name.includes(q) || phone.includes(q);
             }
-            
             return true;
           });
 
-          // 2. 再排序 (未處理優先 > 時間新到舊)
           return list.sort((a, b) => {
             const statusA = (a.data.status || 'pending') === 'pending' ? 1 : 0;
             const statusB = (b.data.status || 'pending') === 'pending' ? 1 : 0;
-            
             if (statusA !== statusB) return statusB - statusA;
             return b.orderId.localeCompare(a.orderId);
           });
@@ -327,6 +326,23 @@
           return cart.reduce((sum, i) => sum + (Number(i.Price) * Number(i.quantity)), 0);
         },
 
+        // ⭐ 儲存備註
+        saveNote(order) {
+          const newNote = order.tempNote;
+          fetch(this.apiUrl + "/orders/update/" + order.orderId, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ note: newNote })
+          })
+          .then(r => r.json())
+          .then(res => {
+            if (!order.data.customer) order.data.customer = {};
+            order.data.customer.note = newNote;
+            this.$set(order, 'isEditingNote', false); // 退出編輯模式
+          })
+          .catch(err => alert("備註更新失敗"));
+        },
+
         updateStatus(id, newStatus) {
           fetch(this.apiUrl + "/orders/update/" + id, {
             method: "POST",
@@ -338,7 +354,7 @@
             const order = this.orders.find(o => o.orderId === id);
             if (order) {
               order.data.status = newStatus;
-              this.orders = [...this.orders]; // 觸發更新
+              this.orders = [...this.orders];
             }
           })
           .catch(err => alert("狀態更新失敗"));
