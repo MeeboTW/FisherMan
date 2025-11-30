@@ -302,7 +302,14 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           })
-          .then(r => r.json())
+          .then(async r => {
+            const data = await r.json();
+            if (!r.ok) {
+              // 如果是 429 或其他錯誤，拋出後端回傳的 message
+              throw new Error(data.message || "伺服器錯誤 (" + r.status + ")");
+            }
+            return data;
+          })
           .then(res => {
             this.isSubmitting = false;
             alert("✔ 訂單提交成功！");
@@ -313,7 +320,8 @@
           })
           .catch(err => {
             this.isSubmitting = false;
-            alert("❌ 訂單送出失敗");
+            // 顯示具體的錯誤訊息
+            alert("❌ " + err.message);
             console.error(err);
           });
         }
