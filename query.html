@@ -199,6 +199,18 @@
       },
 
       mounted() {
+        // 讀取本地緩存的登入狀態
+        const savedUser = localStorage.getItem('fish_user');
+        if (savedUser) {
+          try {
+            const user = JSON.parse(savedUser);
+            this.isLoggedIn = true;
+            this.googleUser = user;
+            this.mode = 'google'; // 自動切換到會員分頁
+            this.searchByEmail(user.email); // 自動查單
+          } catch(e) {}
+        }
+
         // 初始化 Google 登入 callback
         window.handleCredentialResponse = (response) => {
           const payload = this.decodeJwt(response.credential);
@@ -207,6 +219,8 @@
             name: payload.name,
             email: payload.email
           };
+          // 儲存狀態
+          localStorage.setItem('fish_user', JSON.stringify(this.googleUser));
           // 自動查單
           this.searchByEmail(payload.email);
         };
@@ -227,6 +241,7 @@
           this.googleUser = {};
           this.searchResult = [];
           this.hasSearched = false;
+          localStorage.removeItem('fish_user'); // 清除緩存
           google.accounts.id.disableAutoSelect();
         },
 

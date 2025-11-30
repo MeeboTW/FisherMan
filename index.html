@@ -251,6 +251,7 @@
         if (savedCustomer) {
           try {
             const parsed = JSON.parse(savedCustomer);
+            if (parsed.name) this.customer.name = parsed.name;
             if (parsed.phone) this.customer.phone = parsed.phone;
             if (parsed.note) this.customer.note = parsed.note;
           } catch(e) {}
@@ -291,6 +292,9 @@
 
       watch: {
         // ⭐ 監聽電話與備註變動，自動儲存
+        'customer.name'(newVal) {
+          this.saveCustomerData();
+        },
         'customer.phone'(newVal) {
           this.saveCustomerData();
         },
@@ -303,6 +307,7 @@
         // 儲存客戶輸入資料
         saveCustomerData() {
           const data = {
+            name: this.customer.name,
             phone: this.customer.phone,
             note: this.customer.note
           };
@@ -434,12 +439,8 @@
             this.isSubmitting = false;
             alert("✔ 訂單提交成功！您可以到查詢頁面查看訂單狀態。");
 
-            // 清空 (保留姓名如果已登入)
-            this.customer = { 
-              name: this.isLoggedIn ? this.googleUser.name : "", 
-              phone: "", 
-              note: "" 
-            };
+            // 保留姓名與電話，只清空購物車與備註
+            this.customer.note = ""; 
             this.cart = [];
           })
           .catch(err => {
