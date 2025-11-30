@@ -103,13 +103,14 @@
   <div id="app" class="container">
     <h1>🔎 查詢歷史訂單</h1>
     
-    <div class="tabs">
+    <!-- 分頁籤 (僅在未登入時顯示) -->
+    <div class="tabs" v-if="!isLoggedIn">
       <div class="tab" :class="{ active: mode === 'phone' }" @click="mode = 'phone'">電話查詢</div>
       <div class="tab" :class="{ active: mode === 'google' }" @click="mode = 'google'">會員查詢</div>
     </div>
 
-    <!-- 電話查詢模式 -->
-    <div v-if="mode === 'phone'">
+    <!-- 電話查詢模式 (未登入且模式為 phone 時顯示) -->
+    <div v-if="!isLoggedIn && mode === 'phone'">
       <p style="color:#666; text-align:center; margin-bottom:20px;">
         請輸入下單時填寫的電話號碼
       </p>
@@ -119,7 +120,7 @@
       </button>
     </div>
 
-    <!-- Google 查詢模式 -->
+    <!-- Google 查詢模式 (登入後直接顯示，或未登入且模式為 google 時顯示) -->
     <div v-else>
       <div v-if="!isLoggedIn" style="text-align: center;">
         <p style="color:#666; margin-bottom:20px;">登入 Google 帳號，一鍵查看所有訂單</p>
@@ -241,6 +242,7 @@
           this.googleUser = {};
           this.searchResult = [];
           this.hasSearched = false;
+          this.mode = 'phone'; // 登出後自動切回電話查詢
           localStorage.removeItem('fish_user'); // 清除緩存
           google.accounts.id.disableAutoSelect();
         },
