@@ -31,6 +31,27 @@
       flex-direction: column;
       align-items: center;
       text-align: center;
+      position: relative; /* 為了定位愛心 */
+    }
+    /* 愛心按鈕 */
+    .fav-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 18px;
+      border: 1px solid #eee;
+      user-select: none;
+    }
+    .fav-btn.active {
+      color: red;
     }
     .product img {
       width: 180px;
@@ -75,9 +96,22 @@
   <div id="app">
     <h1>🐟 今日新鮮漁獲</h1>
     
+    <!-- 篩選按鈕 -->
+    <div style="margin-bottom: 15px;">
+      <button @click="showOnlyFav = !showOnlyFav" 
+              :style="{ background: showOnlyFav ? '#e91e63' : '#fff', color: showOnlyFav ? 'white' : '#333', border: '1px solid #ddd' }">
+        {{ showOnlyFav ? '❤️ 只看收藏' : '🤍 顯示所有商品' }}
+      </button>
+    </div>
+
     <!-- 商品列表 (4x 宮格) -->
     <div class="product-grid">
-      <div class="product" v-for="p in products" :key="p.id">
+      <div class="product" v-for="p in filteredProducts" :key="p.id">
+        <!-- 愛心按鈕 -->
+        <div class="fav-btn" :class="{ active: isFav(p.id) }" @click.stop="toggleFav(p.id)">
+          {{ isFav(p.id) ? '❤️' : '🤍' }}
+        </div>
+
         <img v-if="p.ImageURL" :src="p.ImageURL" alt="商品圖片">
         <div v-else style="width:180px; height:180px; background:#eee; display:flex; align-items:center; justify-content:center; margin-bottom:10px; border-radius:4px;">
           <span style="color:#888;">暫無圖片</span>
@@ -166,6 +200,12 @@
       {{ isSubmitting ? '送出中...' : '✔ 確認下單' }}
     </button>
     
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="query.html" style="color: #1976d2; text-decoration: none; font-size: 14px;">
+        🔎 查詢我的訂單
+      </a>
+    </div>
+    
   </div>
 
   <script>
@@ -179,18 +219,31 @@
           isSubmitting: false,
           customer: { name: "", phone: "", note: "" },
           isLoggedIn: false,
-          googleUser: {}
+          googleUser: {},
+          // 收藏功能
+          favorites: [], // 存 ID 陣列
+          showOnlyFav: false
         };
       },
 
       computed: {
         cartTotal() {
           return this.cart.reduce((sum, i) => sum + i.Price * i.quantity, 0);
+        },
+        // 篩選後的商品列表
+        filteredProducts() {
+          if (!this.showOnlyFav) return this.products;
+          return this.products.filter(p => this.favorites.includes(p.id));
         }
       },
 
       mounted() {
         this.fetchProducts();
+        // 讀取收藏紀錄
+        const savedFav = localStorage.getItem('fish_fav');
+        if (savedFav) {
+          try { this.favorites = JSON.parse(savedFav); } catch(e) {}
+        }
         
         // 將 Vue 實例掛載到 window，讓 Google callback 呼叫得到
         window.handleCredentialResponse = (response) => {
@@ -219,6 +272,19 @@
       },
 
       methods: {
+        // 收藏相關
+        isFav(id) {
+          return this.favorites.includes(id);
+        },
+        toggleFav(id) {
+          if (this.isFav(id)) {
+            this.favorites = this.favorites.filter(fid => fid !== id);
+          } else {
+            this.favorites.push(id);
+          }
+          localStorage.setItem('fish_fav', JSON.stringify(this.favorites));
+        },
+
         // JWT 解碼工具函式
         decodeJwt(token) {
           var base64Url = token.split('.')[1];
@@ -280,10 +346,20 @@
 
         // 送出訂單
         submitOrder() {
-          if (!this.customer.name || !this.customer.phone) {
-            alert("請輸入姓名與電話");
+          if (!this.customer.name) {
+            alert("請輸入姓名");
             return;
           }
+          
+          // 電話格式檢查 (簡易版：0開頭，總共 9~10 位數字)
+          // 支援手機 0912345678 (10碼)
+          // 支援市話 0223456789 (10碼) 或 042345678 (9碼)
+          const phoneRegex = /^0\d{8,9}$/;
+          if (!this.customer.phone || !phoneRegex.test(this.customer.phone)) {
+            alert("請輸入正確的電話格式 (例如 0912345678 或 0223456789)");
+            return;
+          }
+
           if (this.cart.length === 0) {
             alert("購物車是空的");
             return;
@@ -293,7 +369,10 @@
 
           const payload = {
             action: "submitOrder",
-            customer: this.customer,
+            customer: {
+              ...this.customer,
+              email: this.googleUser.email // 補上 email
+            },
             cart: this.cart
           };
 
